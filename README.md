@@ -49,10 +49,3 @@ This is the core logic that determines how many shares, $x_i$, to buy in each mi
    - If the current impact is **higher** than average (a bad time to trade), it reduces its trading rate, saving shares for later.
 5. **Safety Checks**: The algorithm includes risk limits, such as a cap on the maximum shares per minute and a "panic mode" to ensure completion near the end of the day.
 
-## How to Use the Code
-
-The project is contained in a single Python script.
-
-1. **Setup**: Place the ticker CSV files (`SOUN_*.csv`, `FROG_*.csv`, `CRWV_*.csv`) in the same directory as the script.
-2. **Run Question 1 Analysis**: The first part of the script (`if __name__ == '__main__':` block in the first code cell) will automatically run the model training and validation for all three tickers. This will output the performance metrics and feature importance plots for each.
-3. **Run Question 2 Simulation**: The second part of the script (in the second code cell) will use the trained models to run the execution simulation. You can change the `ticker_to_simulate` variable to see how the algorithm performs for different stocks. The output will be a table of performance metrics and a bar chart showing the final execution schedule.
