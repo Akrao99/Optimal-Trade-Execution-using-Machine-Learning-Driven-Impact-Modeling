@@ -1,5 +1,5 @@
 # Optimal-Trade-Execution-using-Machine-Learning-Driven-Impact-Modeling
-# Optimal Trade Execution via ML-Driven Impact Modeling
+
 
 This project develops a sophisticated algorithmic trading strategy to minimize the market impact costs of large stock orders. The system uses a Gradient Boosting model, trained on high-frequency limit order book data, to power an adaptive execution algorithm that intelligently schedules trades based on real-time market conditions.
 
