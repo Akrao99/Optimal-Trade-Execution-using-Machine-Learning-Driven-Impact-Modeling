@@ -112,6 +112,4 @@ This project demonstrates a practical, **machine learning-driven approach** to o
 - **Gradient Boosting model** captures **non-linear market impact dynamics**, outperforming traditional models.  
 - **Adaptive execution algorithm** leverages predictions to make **real-time decisions** across liquidity profiles.  
 
-**Future improvements:**
-- Add **temporal features** (lagged spreads, time-of-day indicators).  
-- Use **walk-forward cross-validation** for robustness, especially for illiquid stocks.  
+  
