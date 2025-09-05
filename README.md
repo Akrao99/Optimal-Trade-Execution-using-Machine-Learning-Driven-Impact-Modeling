@@ -1,51 +1,117 @@
-# Optimal-Trade-Execution-using-Machine-Learning-Driven-Impact-Modeling
+# Optimal Trade Execution using Machine Learning-Driven Impact Modeling
 
+This project develops an algorithmic trading strategy to minimize **market impact costs** for large stock orders.  
+The system uses a **Gradient Boosting model**, trained on **high-frequency limit order book (LOB)** data, to power an **adaptive execution algorithm** that intelligently schedules trades based on real-time market conditions.
 
-This project develops a sophisticated algorithmic trading strategy to minimize the market impact costs of large stock orders. The system uses a Gradient Boosting model, trained on high-frequency limit order book data, to power an adaptive execution algorithm that intelligently schedules trades based on real-time market conditions.
+---
 
-## Project Overview
+## 📌 Project Overview
 
-Executing a large stock order in a single trade can significantly move the price, leading to high transaction costs (a phenomenon known as "temporary market impact"). The goal of an optimal execution algorithm is to break this large "parent" order into smaller "child" orders and execute them over time to minimize this impact.
+Executing a large stock order in a single trade can significantly move the price, leading to high transaction costs (a phenomenon known as **temporary market impact**).  
+
+The goal of an **optimal execution algorithm** is to break this large **parent order** into smaller **child orders** and execute them over time to minimize this impact.
 
 This project tackles the problem in two main stages:
 
-1. **Impact Modeling**: First, we build a highly accurate machine learning model to predict the price impact of a trade, given the current state of the market and the desired trade size.
-2. **Execution Algorithm**: Second, we use the model's predictions to power an adaptive algorithm that decides how many shares to buy each minute, aiming to concentrate trades in periods of high liquidity (low cost).
+1. **Impact Modeling**  
+   Build a machine learning model to predict the price impact of a trade, given the current state of the market and the desired trade size.
 
-The final system demonstrates a significant performance improvement over a standard Time-Weighted Average Price (TWAP) benchmark, achieving cost savings of over 27% for an illiquid security.
+2. **Execution Algorithm**  
+   Use the model's predictions to power an adaptive algorithm that decides how many shares to buy each minute, concentrating trades in periods of high liquidity.
 
-## Project Logic & Details
+---
 
-The project is implemented as a Python script that simulates the entire workflow, from model training to executing a 50,000-share order over a 390-minute trading day.
+## ⚙️ Project Logic & Details
+
+The project is implemented as a **Python script** that simulates the workflow, from model training to executing a **50,000-share order** over a **390-minute trading day**.
+
+---
 
 ### Step 1: Feature Engineering & Dataset Creation
 
-The foundation of the system is a robust dataset that teaches the model how market conditions relate to trade impact.
+The foundation of the system is a robust dataset that captures how market conditions relate to trade impact.
 
-- **Data Source**: The model uses high-frequency CSV files containing 10 levels of limit order book data for three tickers with different liquidity profiles (`SOUN`, `FROG`, `CRWV`).
-- **"Ground Truth" Calculation**: For each historical snapshot of the order book, we simulate executing trades of various sizes (e.g., 50, 100, 500... shares) by "walking the book." The resulting slippage from this simulation becomes the "true" impact and our model's target variable.
-- **Feature Creation**: For each simulated trade, we create a rich feature set that describes the market at that moment, including:
-  - `order_size`: The size of the proposed trade.
-  - `spread`: The difference between the best bid and ask prices.
-  - `liquidity_imbalance`: A measure of whether there is more buying or selling pressure in the book.
-  - **Full Book Depth**: The prices and sizes of all 10 bid and ask levels.
+- **Data Source**:  
+  High-frequency CSV files containing **10 levels of LOB data** for three tickers:
+  - **SOUN** (high liquidity)  
+  - **FROG** (medium liquidity)  
+  - **CRWV** (illiquid)
+
+- **Ground Truth Calculation**:  
+  For each historical LOB snapshot, we simulate executing trades of various sizes (50, 100, 200, 500, 1,000, 2,000, 5,000 shares) by *walking the book* on the ask side.  
+  - The resulting slippage, normalized by the mid-price, becomes the **true impact** and the model’s **target variable**.
+
+- **Feature Creation**:
+  - `order_size`: proposed trade size  
+  - `spread`: best ask – best bid  
+  - `liquidity_imbalance`:  
+    \[
+    \frac{\text{bid\_liquidity} - \text{ask\_liquidity}}{\text{bid\_liquidity} + \text{ask\_liquidity}}
+    \]  
+  - `full_book_depth`: prices and sizes of all 10 bid and ask levels
+
+- **Time-Series Handling**:  
+  The dataset uses **time-based splitting (80% train, 20% test)** to respect temporal order and prevent look-ahead bias.
+
+---
 
 ### Step 2: Training the Gradient Boosting Impact Model
 
-We use a **Gradient Boosting** model (specifically, LightGBM) to predict the temporary market impact. This model was chosen after analysis showed that simpler parametric models (like the Square Root Impact model) were unreliable across different stocks.
+We use a **Gradient Boosting model (LightGBM)** to predict temporary market impact, chosen because simpler parametric models (e.g., the **square root model**) were unreliable across different stocks.
 
-- **Training**: For each ticker, a separate model is trained on its feature-engineered dataset. The model learns the complex, non-linear relationships between the market features and the resulting price impact.
-- **Performance**: The models achieve exceptionally high predictive accuracy on unseen test data, with R-squared values of **0.99 (SOUN), 0.95 (FROG), and 0.89 (CRWV)**.
+- **Training**:  
+  Separate models are trained for each ticker using **time-series-aware splits**.  
+  The model learns **non-linear relationships** between market features and price impact.
+
+- **Performance**:
+
+| Stock | Liquidity | R²     | MAE       |
+|-------|-----------|--------|-----------|
+| SOUN  | High      | 0.5043 | 0.000053  |
+| FROG  | Medium    | 0.6022 | 0.000266  |
+| CRWV  | Illiquid  | 0.4847 | 0.000573  |
+
+➡️ These results reflect realistic performance across different liquidity environments.  
+➡️ The model **outperforms** the square root model (R² ~0.21 for FROG, ~0.33 for CRWV, **negative for SOUN**).
+
+---
 
 ### Step 3: The Adaptive Execution Algorithm
 
-This is the core logic that determines how many shares, $x_i$, to buy in each minute, $i$.
+This is the **core logic** that determines how many shares \(x_i\) to buy in each minute \(i\) to minimize total cost:
 
-1. **Establish a Baseline**: Before the simulation starts, the algorithm calculates the *average* predicted impact for a standard trade size across the entire day's data. This serves as its benchmark for "normal" market conditions.
-2. **Calculate Target Rate**: At each minute, it knows the simple average number of shares it needs to trade to finish on time (e.g., `remaining_shares / minutes_left`).
-3. **Assess Live Market**: It uses the trained model to predict the impact for a standard trade size based on the *current* market state.
-4. **Adapt Aggressively**: It compares the current predicted impact to the daily average.
-   - If the current impact is **lower** than average (a good time to trade), it increases its trading rate.
-   - If the current impact is **higher** than average (a bad time to trade), it reduces its trading rate, saving shares for later.
-5. **Safety Checks**: The algorithm includes risk limits, such as a cap on the maximum shares per minute and a "panic mode" to ensure completion near the end of the day.
+\[
+\min_{C(X)} = \sum_{i=1}^{N} x_i \cdot \text{GBM\_predict}(\text{features}_i, x_i)
+\]
 
+**Workflow:**
+1. **Establish Baseline**: Calculate average predicted impact for a standard trade size across the day.  
+2. **Calculate Target Rate**:  
+   \[
+   \text{shares/min} = \frac{\text{remaining\_shares}}{\text{minutes\_left}}
+   \]  
+3. **Assess Market**: Predict impact for a standard trade size using current LOB state.  
+4. **Adapt Aggressively**:
+   - If current impact < average → **increase trading rate** (high liquidity).  
+   - If current impact > average → **reduce trading rate** (save shares for later).  
+
+**Safety Checks:**
+- Cap on maximum shares per minute.  
+- **Panic mode** to ensure completion by day’s end.  
+
+**Highlights:**
+- Exploits **intraday liquidity patterns** (e.g., tighter spreads near close for FROG).  
+- Preliminary results suggest **up to 27% cost savings** vs. TWAP for illiquid securities like CRWV.
+
+---
+
+## 📊 Conclusion
+
+This project demonstrates a practical, **machine learning-driven approach** to optimal trade execution.
+
+- **Gradient Boosting model** captures **non-linear market impact dynamics**, outperforming traditional models.  
+- **Adaptive execution algorithm** leverages predictions to make **real-time decisions** across liquidity profiles.  
+
+**Future improvements:**
+- Add **temporal features** (lagged spreads, time-of-day indicators).  
+- Use **walk-forward cross-validation** for robustness, especially for illiquid stocks.  
